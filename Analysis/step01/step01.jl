@@ -9,13 +9,13 @@ include("utils\\update_hgf_extension.jl")
 
 
 ##########################################################################################
-####################################### Model I. #########################################
+####################################### Model II. #########################################
 ##########################################################################################
 
 #======================================================#
-#          CREATE 2-LEVEL HGFs WITH 4 ALIENS           #
+#   CREATE 2-LEVEL HGFs WITH 4 ALIENS + 1 TRANSITION   #
 #======================================================#
-function second_stage_hgfs(config::Dict = Dict())
+function hgfs_model_2(config::Dict = Dict())
     spec_defaults = Dict(
         "n_aliens" => 4,
         # --- Alien HGFs (shared parameters: ω₂, α₂, etc.) ---
@@ -103,7 +103,7 @@ function second_stage_hgfs(config::Dict = Dict())
                        config[("xprob", "initial_precision")]),
         ParameterGroup("α₂", grouped_xbin_xprob_coupling_strength,
                        config[("xbin", "xprob", "coupling_strength")]),
-        # --- Transition: single-element groups so you get clean ω₁/α₁ names ---
+        # --- Transition: single-element groups  ---
         ParameterGroup("ω₁", [("xprob_T", "volatility")],
                        config[("xprob_T", "volatility")]),
         ParameterGroup("α₁", [("xbin_T", "xprob_T", "coupling_strength")],
@@ -121,12 +121,122 @@ function second_stage_hgfs(config::Dict = Dict())
     return hgf
 end
 
-hgf = second_stage_hgfs()
 
-# this would be the input to the hgf is alien A was chosen and returned nothing (no reward), other hgfs receive missing
-# Transition observed (common = 1); alien HGFs untouched
+#======================================================#
+#                ACTION MODEL FUNCTION                 #
+#======================================================#
 
-update_hgf!(hgf, [nothing, nothing, nothing, nothing, 1])
 
-update_hgf!(hgf, [1, missing, missing, missing, nothing])
+function planning_model_2(
+    attributes::ModelAttributes,
+    action::Union{Int, AbstractString, Missing},
+    observation::Union{Int, Missing},
+)
+    # roughly 1.6% of trials have missing observation,
+    # therefore we simply return a uniform here and move on:
+    if ismissing(action) || ismissing(observation)
+        return Categorical([0.5, 0.5])
+    end
+
+    # 1. Extract the hgf:
+    hgf = attributes.submodel
+    # Pre-allocate the input for the hgf:
+    hgf_input = Vector{Union{Int, Missing, Nothing}}(nothing, length(hgf.input_nodes))
+    # 2. Find out what stage of the task we are in (transition or alien choice):
+
+    #   If we have just observed the transition, we need to:
+    #   1. Save Stage-1 action that was just taken.
+    #   2. Update the transition hgf:
+    #   3. Return the choice probabilities for the aliens:
+    if action isa Int
+        update_state!(attributes, :last_S1_action, action)
+
+        #  Update the transition hgf based on the outcome
+        is_common = (action == observation) ? 1 : 0
+        hgf_input[5] = is_common
+        update_hgf!(hgf, hgf_input)
+
+        # Return choice probabilities for the aliens depending on the planet:
+        β₂ = load_parameters(attributes).β₂
+        # If we are on planet 1:
+        if observation == 1
+            μ₂A = get_states(hgf, ("xbin_A", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+            μ₂B = get_states(hgf, ("xbin_B", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+            return Categorical(softmax(β₂ .* [μ₂A, μ₂B]))
+         # If we are on planet 2:
+        else
+            μ₂C = get_states(hgf, ("xbin_C", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+            μ₂D = get_states(hgf, ("xbin_D", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+            return Categorical(softmax(β₂ .* [μ₂C, μ₂D]))
+        end
+
+    #   If we have just observed a reward given our choice of alien:
+    #   1. First update the alien HGF's
+    #   2. Calculate 1-stage action:
+    else
+        hgf_input[1:4] .= missing
+        alien_idx = Dict("A" => 1, "B" => 2, "C" => 3, "D" => 4)[action]
+        hgf_input[alien_idx] = observation
+        update_hgf!(hgf, hgf_input)
+
+        # Now we are deciding which planet to choose:
+        # 1. Form the transition matrix T:
+        μ₁ = get_states(hgf, ("xbin_T", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+        T = [μ₁ 1-μ₁;
+            1-μ₁  μ₁]
+        # 2. Calculate value of each planet (max reward):
+        μ₂A = get_states(hgf, ("xbin_A", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+        μ₂B = get_states(hgf, ("xbin_B", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+        VP1 = maximum([μ₂A, μ₂B])
+
+        μ₂C = get_states(hgf, ("xbin_C", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+        μ₂D = get_states(hgf, ("xbin_D", "prediction_mean"))|> x -> x === missing ? 0.5 : x
+        VP2 = maximum([μ₂C, μ₂D])
+
+        # 3. Calculate Q:
+        Q = T*[VP1, VP2]
+        β₁ = load_parameters(attributes).β₁
+        p = load_parameters(attributes).p
+        rep = load_states(attributes).last_S1_action == 1 ? [1, 0] : [0, 1]
+
+        return Categorical(softmax(β₁*(Q + p*rep)))
+        
+    end
+
+end
+
+
+#======================================================#
+#                  ACTION MODEL AGENT                  #
+#======================================================#
+
+function create_cognitive_model_2(
+)
+    ### CREATE HGF ###
+    hgf = hgfs_model_2()
+    parameters = (β₁ = Parameter(1.0), β₂ = Parameter(1.0), p = Parameter(1.0))
+    
+    ### INPUT STRUCTURE ###
+    observations = (;
+        action = Observation(Union{Missing, Int, String}),
+        observation = Observation(Union{Missing, Int}),       
+    )
+    states = (;
+        last_S1_action = State(Union{Missing, Int}),
+    )
+    ###  OUTPUT STRUCTURE ###
+    actions = (; choice = Action(Categorical),)
+    return ActionModel(
+        planning_model_2,
+        parameters = parameters,
+        observations = observations,
+        states=states,
+        actions = actions,
+        submodel = hgf,
+    )
+end
+
+cognititive_model_2 = create_cognitive_model_2()
+agent_model_2 = init_agent(cognititive_model_2, save_history=true)
+action = observe!(agent_model_2, (action=1,observation=1,))
 

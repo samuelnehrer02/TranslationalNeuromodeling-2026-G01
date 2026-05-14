@@ -69,6 +69,15 @@ function update_hgf!(
         end
     end
 
+    # Refresh predictions so prediction_mean reflects the next-trial prior
+    for node in reverse(hgf.ordered_nodes.all_state_nodes)
+        in_state(node) && update_node_prediction!(node, stepsize)
+    end
+    
+    for node in reverse(hgf.ordered_nodes.input_nodes)
+        in_input(node) && update_node_prediction!(node, stepsize)
+    end
+
     if hgf.save_history
         push!(hgf.timesteps, hgf.timesteps[end] + stepsize)
         for node in hgf.ordered_nodes.all_nodes
