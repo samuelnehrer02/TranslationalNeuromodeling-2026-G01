@@ -1,5 +1,5 @@
 ##########################################################################################
-############################# PARAMETER RECOVERY SIMULATION ##############################
+################################# SIMULATION FUNCTION #####################################
 ##########################################################################################
 using DataFrames, Distributions, Random
 
@@ -10,10 +10,11 @@ using DataFrames, Distributions, Random
 #     .behavior   — DataFrame(ID, action, observation, choice) [(2n-1) × n_participants rows]
 #     .parameters — DataFrame(ID, <one column per parameter>) [n_participants rows]
 
-function simulate_parameter_recovery(;
+function simulate_synthetic_dataset(;
     create_model_fn,
     env_table::DataFrame,
     n_participants::Int,
+    fixed_parameters::NamedTuple = NamedTuple(),
     param_distributions::NamedTuple,
     seed::Int = 1,
 )
@@ -46,14 +47,16 @@ function simulate_parameter_recovery(;
         cognitive_model = create_model_fn()
         agent           = init_agent(cognitive_model, save_history = true)
         set_parameters!(agent, sampled_params[i])
-
+        if length(fixed_parameters) > 0
+            set_parameters!(agent, fixed_parameters)
+        end
         # --- Simulation loop  ---
         rockets = Vector{Int}(undef, n)
         planets = Vector{Int}(undef, n)
         aliens  = Vector{String}(undef, n)
         rewards = Vector{Int}(undef, n)
 
-        rocket = 1
+        rocket = rand(1:2)
         for t in 1:n
             rockets[t] = rocket
             planet = rocket == 1 ? env_table.planet_if_rocket1[t] : env_table.planet_if_rocket2[t]

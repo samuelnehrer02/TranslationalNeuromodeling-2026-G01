@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "2b17c1cba635af50722d59156b653d04103829ca"
+project_hash = "5554b9cb3d87473f910d70bb78e0e7f28726f5c8"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "bbc22a9a08a0ef6460041086d8a7b27940ed4ffd"
@@ -274,6 +274,32 @@ deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
 git-tree-sha1 = "4126b08903b777c88edf1754288144a0492c05ad"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.8"
+
+[[deps.AxisKeys]]
+deps = ["IntervalSets", "LinearAlgebra", "NamedDims", "Tables"]
+git-tree-sha1 = "0e45173a40f7750190f10c3121c6cad3c6cb63c9"
+uuid = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
+version = "0.2.16"
+
+    [deps.AxisKeys.extensions]
+    AbstractFFTsExt = "AbstractFFTs"
+    ChainRulesCoreExt = "ChainRulesCore"
+    CovarianceEstimationExt = "CovarianceEstimation"
+    InvertedIndicesExt = "InvertedIndices"
+    LazyStackExt = "LazyStack"
+    OffsetArraysExt = "OffsetArrays"
+    StatisticsExt = "Statistics"
+    StatsBaseExt = "StatsBase"
+
+    [deps.AxisKeys.weakdeps]
+    AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    CovarianceEstimation = "587fd27a-f159-11e8-2dae-1979310e6154"
+    InvertedIndices = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
+    LazyStack = "1fad7336-0346-5a1a-a56f-a06ba010965b"
+    OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+    Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+    StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [[deps.BSplineKit]]
 deps = ["ArrayLayouts", "BandedMatrices", "FastGaussQuadrature", "ForwardDiff", "LinearAlgebra", "PrecompileTools", "Random", "Reexport", "SparseArrays", "Static", "StaticArrays", "StaticArraysCore", "StatsAPI"]
@@ -1565,6 +1591,25 @@ git-tree-sha1 = "33d258318d9e049d26c02ca31b4843b2c851c0b0"
 uuid = "86f7a689-2022-50b4-a561-43c23ac3c673"
 version = "0.10.5"
 
+[[deps.NamedDims]]
+deps = ["LinearAlgebra", "Statistics"]
+git-tree-sha1 = "f9e4a49ecd1ea2eccfb749a506fa882c094152b4"
+uuid = "356022a1-0364-5f58-8944-0da4b18d706f"
+version = "1.2.3"
+
+    [deps.NamedDims.extensions]
+    AbstractFFTsExt = "AbstractFFTs"
+    ChainRulesCoreExt = "ChainRulesCore"
+    CovarianceEstimationExt = "CovarianceEstimation"
+    TrackerExt = "Tracker"
+
+    [deps.NamedDims.weakdeps]
+    AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    CovarianceEstimation = "587fd27a-f159-11e8-2dae-1979310e6154"
+    Requires = "ae029012-a4dd-5104-9daa-d747884805df"
+    Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+
 [[deps.NaturalSort]]
 git-tree-sha1 = "eda490d06b9f7c00752ee81cfa451efe55521e21"
 uuid = "c020b1a1-e9b0-503a-9c33-f039bfc54a85"
@@ -1726,6 +1771,17 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jl
 git-tree-sha1 = "58e5ed5e386e156bd93e86b305ebd21ac63d2d04"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.57.1+0"
+
+[[deps.ParetoSmooth]]
+deps = ["AxisKeys", "LinearAlgebra", "LogExpFunctions", "MCMCDiagnosticTools", "NamedDims", "PrettyTables", "Printf", "Random", "Requires", "Statistics", "StatsBase"]
+git-tree-sha1 = "8edfe3f68ff63581aea3754cefb68ff6b75c0acb"
+uuid = "a68b5a21-f429-434e-8bfa-46b447300aac"
+version = "0.7.16"
+weakdeps = ["DynamicPPL", "MCMCChains"]
+
+    [deps.ParetoSmooth.extensions]
+    ParetoSmoothDynamicPPLExt = ["DynamicPPL", "MCMCChains"]
+    ParetoSmoothMCMCChainsExt = "MCMCChains"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
