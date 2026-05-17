@@ -58,16 +58,35 @@ sort!(df_followup_raw, [:ID, :trial])
 df_baseline = combine(groupby(df_baseline_raw, :ID), expand_participant)
 df_followup = combine(groupby(df_followup_raw, :ID), expand_participant)
 
-# ── 6. Convert ID and action to String ─────────────────────────────────────────────
+# ── 6. Normalize column types ──────────────────────────────────────────────────────
 for d in (df_baseline, df_followup)
-    d.ID     = String.(d.ID)
-    d.action = [ismissing(a) ? missing : (a isa Char ? string(a) : a) for a in d.action]
+    d.ID = String.(string.(d.ID))   # handles String7, String, anything → String
+
+    d.action = [
+        ismissing(a)  ? missing  :
+        a isa Integer ? Int64(a) :
+                        String(a)
+        for a in d.action
+    ]
+    d.action = convert(Vector{Union{Missing, Int64, String}}, d.action)
 end
-
-
 
 # ── 7. Save the expanded data as separate jld2 files for baseline and followup ─────
 using JLD2
 jldsave("Analysis\\step04\\data\\baseline.jld2"; df_baseline)
 jldsave("Analysis\\step04\\data\\followup.jld2"; df_followup)
 
+
+# ── 8. Split baseline data into chunks for workstation and laptop ──────────────────
+df_baseline = load("Analysis\\step04\\data\\baseline.jld2", "df_baseline")
+all_ids = sort(unique(df_baseline.ID))
+n       = length(all_ids)
+# Workstation gets 3/4, laptop gets 1/4
+split_at = floor(Int, 3 * n / 4)   # 477 for n = 637
+ws_ids     = Set(all_ids[1:split_at])
+laptop_ids = Set(all_ids[split_at+1:end])
+df_baseline_chunk_1_3 = filter(:ID => in(ws_ids),     df_baseline)
+df_baseline_chunk_4   = filter(:ID => in(laptop_ids), df_baseline)
+
+#jldsave("Analysis\\step04\\fitting_baseline\\baseline_chunk_1_3.jld2"; df_baseline = df_baseline_chunk_1_3)
+#jldsave("Analysis\\step04\\fitting_baseline\\baseline_chunk_4.jld2";   df_baseline = df_baseline_chunk_4)
